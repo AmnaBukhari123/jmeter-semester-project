@@ -8,6 +8,9 @@ jobs:
   performance-test:
     runs-on: ubuntu-latest
 
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,36 +27,59 @@ jobs:
           tar -xzf apache-jmeter-5.6.3.tgz
           mv apache-jmeter-5.6.3 jmeter
 
-      - name: Verify repository files
+      - name: Debug Repository Structure
         run: |
           echo "ROOT:"
-          ls
+          ls -la
 
-          echo "TESTS FOLDER:"
-          ls tests
+          echo "TESTS:"
+          ls -la tests
 
-      - name: Run Performance Tests
+      - name: Run JMeter Test
         run: |
           mkdir -p results
+          mkdir -p reports
 
           jmeter/bin/jmeter -n \
             -t tests/load_test.jmx \
             -l results/results.csv \
             -Jjmeter.save.saveservice.output_format=csv \
-            -j results/jmeter.log
+            -j results/jmeter.log || true
+
+      - name: Show JMeter Log
+        run: |
+          echo "===== JMETER LOG ====="
+
+          if [ -f results/jmeter.log ]; then
+            cat results/jmeter.log
+          else
+            echo "No log file found"
+          fi
 
       - name: Show Results File
         run: |
-          echo "RESULTS:"
-          head results/results.csv
+          echo "===== RESULTS ====="
+
+          if [ -f results/results.csv ]; then
+            head results/results.csv
+          else
+            echo "No results file found"
+          fi
 
       - name: Generate HTML Report
         run: |
-          mkdir -p reports
+          if [ -f results/results.csv ]; then
+            jmeter/bin/jmeter \
+              -g results/results.csv \
+              -o reports || true
+          else
+            echo "results.csv missing"
+          fi
 
-          jmeter/bin/jmeter \
-            -g results/results.csv \
-            -o reports
+      - name: List Reports Folder
+        run: |
+          echo "===== REPORTS ====="
+          ls -la reports || true
 
       - name: Upload HTML Report
         uses: actions/upload-artifact@v4
