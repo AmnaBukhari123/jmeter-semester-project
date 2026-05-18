@@ -24,36 +24,47 @@ jobs:
           tar -xzf apache-jmeter-5.6.3.tgz
           mv apache-jmeter-5.6.3 jmeter
 
-      - name: Verify files
+      - name: Verify repository files
         run: |
+          echo "ROOT:"
           ls
+
+          echo "TESTS FOLDER:"
           ls tests
 
       - name: Run Performance Tests
         run: |
           mkdir -p results
+
           jmeter/bin/jmeter -n \
             -t tests/load_test.jmx \
-            -l results/results.jtl
+            -l results/results.csv \
+            -Jjmeter.save.saveservice.output_format=csv \
+            -j results/jmeter.log
+
+      - name: Show Results File
+        run: |
+          echo "RESULTS:"
+          head results/results.csv
 
       - name: Generate HTML Report
         run: |
           mkdir -p reports
 
-          echo "Checking results file..."
+          jmeter/bin/jmeter \
+            -g results/results.csv \
+            -o reports
 
-          if [ ! -f results/results.jtl ]; then
-            echo "results.jtl not found"
-            exit 1
-          fi
-
-          cat results/results.jtl | head
-
-          jmeter/bin/jmeter -g results/results.jtl -o reports || true
-
-      - name: Upload HTML Report as Artifact
+      - name: Upload HTML Report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: jmeter-report
           path: reports/
+
+      - name: Upload Logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jmeter-logs
+          path: results/
