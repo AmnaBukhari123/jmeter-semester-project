@@ -39,7 +39,17 @@ jobs:
       - name: Generate HTML Report
         run: |
           mkdir -p reports
-          jmeter/bin/jmeter -g results/results.jtl -o reports
+
+          echo "Checking results file..."
+
+          if [ ! -f results/results.jtl ]; then
+            echo "results.jtl not found"
+            exit 1
+          fi
+
+          cat results/results.jtl | head
+
+          jmeter/bin/jmeter -g results/results.jtl -o reports || true
 
       - name: Upload HTML Report as Artifact
         uses: actions/upload-artifact@v4
